@@ -198,3 +198,47 @@ footer {
   padding: 20px;
   color: #666;
 }
+
+header {
+  position: relative;
+}
+
+.header-account {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-button {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 50%;
+  background-color: white;
+  font-size: 20px;
+}
+
+#login-dialog {
+  max-width: 420px;
+  margin: auto;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+}
+
+#login-dialog form {
+  padding: 24px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+#login-message {
+  margin-top: 12px;
+}

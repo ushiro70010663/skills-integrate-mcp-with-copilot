@@ -2,7 +2,25 @@ document.addEventListener("DOMContentLoaded", () => {
   const activitiesList = document.getElementById("activities-list");
   const activitySelect = document.getElementById("activity");
   const signupForm = document.getElementById("signup-form");
+  const signupContainer = document.getElementById("signup-container");
   const messageDiv = document.getElementById("message");
+  const accountButton = document.getElementById("account-button");
+  const adminUsername = document.getElementById("admin-username");
+  const loginDialog = document.getElementById("login-dialog");
+  const loginForm = document.getElementById("login-form");
+  const loginCancel = document.getElementById("login-cancel");
+  const loginMessage = document.getElementById("login-message");
+  let adminToken = sessionStorage.getItem("adminToken") || null;
+  let adminName = sessionStorage.getItem("adminUsername") || null;
+
+  function updateAdminState() {
+    const isAdmin = Boolean(adminToken);
+    signupContainer.hidden = !isAdmin;
+    adminUsername.hidden = !isAdmin;
+    adminUsername.textContent = adminName ? adminName : "";
+    accountButton.setAttribute("aria-label", isAdmin ? "Logout" : "Teacher login");
+    accountButton.textContent = isAdmin ? "✓" : "👤";
+  }
 
   // Function to fetch activities from API
   async function fetchActivities() {
@@ -12,6 +30,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       // Clear loading message
       activitiesList.innerHTML = "";
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
+      updateAdminState();
 
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
@@ -30,7 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 ${details.participants
                   .map(
                     (email) =>
-                      `<li><span class="participant-email">${email}</span><button class="delete-btn" data-activity="${name}" data-email="${email}">❌</button></li>`
+                      `<li><span class="participant-email">${email}</span>${adminToken ? `<button class="delete-btn" data-activity="${name}" data-email="${email}" aria-label="Remove ${email}">❌</button>` : ""}</li>`
                   )
                   .join("")}
               </ul>
@@ -80,6 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/unregister?email=${encodeURIComponent(email)}`,
         {
           method: "DELETE",
+          headers: { Authorization: `Bearer ${adminToken}` },
         }
       );
 
@@ -124,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
         )}/signup?email=${encodeURIComponent(email)}`,
         {
           method: "POST",
+          headers: { Authorization: `Bearer ${adminToken}` },
         }
       );
 
@@ -155,6 +177,62 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  accountButton.addEventListener("click", async () => {
+    if (adminToken) {
+      await fetch("/logout", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      adminToken = null;
+      adminName = null;
+      sessionStorage.removeItem("adminToken");
+      sessionStorage.removeItem("adminUsername");
+      updateAdminState();
+      fetchActivities();
+      return;
+    }
+    loginMessage.classList.add("hidden");
+    loginDialog.showModal();
+  });
+
+  loginCancel.addEventListener("click", () => loginDialog.close());
+
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(loginForm);
+    try {
+      const response = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: formData.get("username"),
+          password: formData.get("password"),
+        }),
+      });
+      const result = await response.json();
+
+      if (!response.ok) {
+        loginMessage.textContent = result.detail || "Login failed";
+        loginMessage.classList.remove("hidden");
+        return;
+      }
+
+      adminToken = result.token;
+      adminName = result.username;
+      sessionStorage.setItem("adminToken", adminToken);
+      sessionStorage.setItem("adminUsername", adminName);
+      loginForm.reset();
+      loginDialog.close();
+      updateAdminState();
+      fetchActivities();
+    } catch (error) {
+      loginMessage.textContent = "Unable to contact the server.";
+      loginMessage.classList.remove("hidden");
+    }
+  });
+
   // Initialize app
+  updateAdminState();
   fetchActivities();
 });
